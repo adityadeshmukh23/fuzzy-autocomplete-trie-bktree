@@ -239,3 +239,35 @@ table.numbers th, table.numbers td { text-align: right; padding: 6px 8px; border
 table.numbers th:first-child, table.numbers td:first-child { text-align: left; }
 table.numbers th { color: var(--muted); font-weight: 600; font-size: 12px; }
 table.numbers td.flagged { color: var(--muted); }
+
+/* ---------- cold-start banner ---------- */
+
+.waking {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--fuzzy-soft);
+  color: var(--fuzzy);
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.spinner {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Respect users who have asked the OS for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; opacity: 0.6; }
+}

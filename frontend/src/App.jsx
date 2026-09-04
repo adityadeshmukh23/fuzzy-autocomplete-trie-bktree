@@ -1,22 +1,16 @@
-import { useEffect, useState } from 'react'
-import * as api from './api.js'
+import { useState } from 'react'
 import { formatCount } from './format.js'
+import useApiStatus from './useApiStatus.js'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import SearchPage from './components/SearchPage.jsx'
 import BenchmarkPage from './components/BenchmarkPage.jsx'
 
 export default function App() {
-  const [tab, setTab] = useState('search')
-  const [index, setIndex] = useState(null)
-
   // A single tab-state variable rather than a router: the app has two views, and adding
-  // react-router would also mean adding an SPA fallback controller on the Spring side if the
-  // built frontend is ever served from the jar. Not worth it for two tabs.
-  useEffect(() => {
-    const controller = new AbortController()
-    api.health(controller.signal).then(setIndex).catch(() => setIndex(null))
-    return () => controller.abort()
-  }, [])
+  // react-router would also mean adding an SPA fallback controller on the Spring side, since the
+  // built frontend is served from the jar in production.
+  const [tab, setTab] = useState('search')
+  const { status, index } = useApiStatus()
 
   return (
     <div className="app">
@@ -27,6 +21,14 @@ export default function App() {
           brute-force scan over the same 100,000-word index.
         </p>
       </header>
+
+      {status === 'connecting' && (
+        <div className="waking">
+          <span className="spinner" aria-hidden="true" />
+          Waking the server. Free hosting stops the service when idle, so the first request after
+          a quiet spell waits for a container start and a JVM boot — usually 30–60 seconds.
+        </div>
+      )}
 
       <nav role="tablist">
         <button role="tab" aria-selected={tab === 'search'} onClick={() => setTab('search')}>
@@ -42,15 +44,17 @@ export default function App() {
       </ErrorBoundary>
 
       <footer>
-        {index ? (
+        {status === 'up' && index && (
           <>
             Index: {formatCount(index.corpusSize)} terms · {index.indexStats} · built in{' '}
             {index.optimizedBuildMillis} ms
           </>
-        ) : (
+        )}
+        {status === 'connecting' && <>Connecting to the API…</>}
+        {status === 'down' && (
           <>
-            API unreachable. Start the backend with <code>./mvnw spring-boot:run</code>, then
-            reload.
+            API unreachable. Running locally? Start the backend with{' '}
+            <code>./mvnw spring-boot:run</code>, then reload.
           </>
         )}
       </footer>

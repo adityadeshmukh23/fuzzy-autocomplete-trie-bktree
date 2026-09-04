@@ -1,0 +1,12 @@
+target/
+frontend/node_modules/
+frontend/dist/
+frontend/src/data/
+.git/
+.github/
+docs/*.md
+*.log
+.DS_Store
+.idea/
+.vscode/
+.claude/

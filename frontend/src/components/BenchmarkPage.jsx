@@ -105,7 +105,7 @@ export default function BenchmarkPage() {
 
         <div className="callout">
           <strong>The asymmetry is the finding.</strong> The trie changes the complexity class —
-          0.38 µs at 1,000 words and 2.54 µs at 100,000, against a scan that grows linearly, so
+          0.37 µs at 1,000 words and 2.56 µs at 100,000, against a scan that grows linearly, so
           prefix speedup keeps climbing with corpus size. The BK-tree only improves a constant
           factor, and at edit distance 2 not even that: it needs the <em>exact</em> distance at
           every visited node to compute its pruning window, so it pays a full O(m·n)

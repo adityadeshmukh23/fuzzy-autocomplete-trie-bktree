@@ -1,0 +1,19 @@
+# Render blueprint. Deploys the Dockerfile as a single web service.
+#
+# The same image runs unchanged on Fly.io, Railway, Koyeb or any container host -- nothing in the
+# Dockerfile is Render-specific, which is the point of containerising rather than using a
+# platform-native Java buildpack.
+services:
+  - type: web
+    name: fuzzy-autocomplete
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+
+    # Render sets $PORT; application.yml already reads it via ${PORT:8080}.
+    healthCheckPath: /health
+
+    envVars:
+      - key: JAVA_TOOL_OPTIONS
+        value: "-XX:MaxRAMPercentage=70 -XX:+UseSerialGC"

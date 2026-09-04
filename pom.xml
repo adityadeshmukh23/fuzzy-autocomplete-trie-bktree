@@ -137,4 +137,44 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <!--
+      Folds the built React app into the jar so one artifact serves both the API and the UI.
+      Spring Boot serves classpath:/static/** automatically, so this needs no code.
+
+      Kept in a profile rather than the default build so day-to-day `./mvnw test` stays fast and
+      does not depend on the frontend having been built. Requires `npm run build` in frontend/
+      first; the Dockerfile does that in an earlier stage.
+    -->
+    <profile>
+      <id>with-frontend</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-resources-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>copy-frontend-build</id>
+                <phase>prepare-package</phase>
+                <goals>
+                  <goal>copy-resources</goal>
+                </goals>
+                <configuration>
+                  <outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
+                  <resources>
+                    <resource>
+                      <directory>${project.basedir}/frontend/dist</directory>
+                      <filtering>false</filtering>
+                    </resource>
+                  </resources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
