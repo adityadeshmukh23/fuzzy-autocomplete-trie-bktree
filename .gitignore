@@ -1,0 +1,21 @@
+# Build output
+target/
+*.class
+node_modules/
+dist/
+.vite/
+
+# Generated: synced from docs/benchmark-data.json by the frontend's prebuild script
+frontend/src/data/
+
+# Local machine state
+.DS_Store
+.idea/
+*.iml
+.vscode/
+.claude/settings.local.json
+
+# Never commit these
+.env
+.env.*
+*.log

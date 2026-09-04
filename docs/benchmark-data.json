@@ -1,0 +1,260 @@
+{
+  "generated": "2026-09-04",
+  "limit": 10,
+  "harness": "JMH 1.37, 1 fork, 3 warmup + 5 measurement iterations, average time per query",
+  "series": [
+    {
+      "group": "prefix",
+      "variant": 1,
+      "datasetSize": 1000,
+      "naiveMicros": 198.327,
+      "optimizedMicros": 587.579,
+      "speedup": 0.338,
+      "reliable": false
+    },
+    {
+      "group": "prefix",
+      "variant": 1,
+      "datasetSize": 10000,
+      "naiveMicros": 87.262,
+      "optimizedMicros": 7.504,
+      "speedup": 11.628,
+      "reliable": true
+    },
+    {
+      "group": "prefix",
+      "variant": 1,
+      "datasetSize": 50000,
+      "naiveMicros": 432.023,
+      "optimizedMicros": 9.343,
+      "speedup": 46.24,
+      "reliable": true
+    },
+    {
+      "group": "prefix",
+      "variant": 1,
+      "datasetSize": 100000,
+      "naiveMicros": 876.728,
+      "optimizedMicros": 13.635,
+      "speedup": 64.302,
+      "reliable": false
+    },
+    {
+      "group": "prefix",
+      "variant": 3,
+      "datasetSize": 1000,
+      "naiveMicros": 6.254,
+      "optimizedMicros": 0.923,
+      "speedup": 6.773,
+      "reliable": false
+    },
+    {
+      "group": "prefix",
+      "variant": 3,
+      "datasetSize": 10000,
+      "naiveMicros": 54.148,
+      "optimizedMicros": 3.835,
+      "speedup": 14.118,
+      "reliable": false
+    },
+    {
+      "group": "prefix",
+      "variant": 3,
+      "datasetSize": 50000,
+      "naiveMicros": 279.759,
+      "optimizedMicros": 3.657,
+      "speedup": 76.501,
+      "reliable": true
+    },
+    {
+      "group": "prefix",
+      "variant": 3,
+      "datasetSize": 100000,
+      "naiveMicros": 805.306,
+      "optimizedMicros": 5.727,
+      "speedup": 140.615,
+      "reliable": false
+    },
+    {
+      "group": "prefix",
+      "variant": 6,
+      "datasetSize": 1000,
+      "naiveMicros": 4.963,
+      "optimizedMicros": 0.377,
+      "speedup": 13.169,
+      "reliable": false
+    },
+    {
+      "group": "prefix",
+      "variant": 6,
+      "datasetSize": 10000,
+      "naiveMicros": 1597.587,
+      "optimizedMicros": 0.823,
+      "speedup": 1941.816,
+      "reliable": false
+    },
+    {
+      "group": "prefix",
+      "variant": 6,
+      "datasetSize": 50000,
+      "naiveMicros": 565.404,
+      "optimizedMicros": 1.803,
+      "speedup": 313.601,
+      "reliable": true
+    },
+    {
+      "group": "prefix",
+      "variant": 6,
+      "datasetSize": 100000,
+      "naiveMicros": 1109.3,
+      "optimizedMicros": 2.542,
+      "speedup": 436.338,
+      "reliable": true
+    },
+    {
+      "group": "fuzzy",
+      "variant": 1,
+      "datasetSize": 1000,
+      "naiveMicros": 49.418,
+      "optimizedMicros": 21.367,
+      "speedup": 2.313,
+      "reliable": false
+    },
+    {
+      "group": "fuzzy",
+      "variant": 1,
+      "datasetSize": 10000,
+      "naiveMicros": 327.501,
+      "optimizedMicros": 172.203,
+      "speedup": 1.902,
+      "reliable": true
+    },
+    {
+      "group": "fuzzy",
+      "variant": 1,
+      "datasetSize": 50000,
+      "naiveMicros": 3763.098,
+      "optimizedMicros": 497.48,
+      "speedup": 7.564,
+      "reliable": false
+    },
+    {
+      "group": "fuzzy",
+      "variant": 1,
+      "datasetSize": 100000,
+      "naiveMicros": 3248.234,
+      "optimizedMicros": 930.835,
+      "speedup": 3.49,
+      "reliable": true
+    },
+    {
+      "group": "fuzzy",
+      "variant": 2,
+      "datasetSize": 1000,
+      "naiveMicros": 82.918,
+      "optimizedMicros": 82.767,
+      "speedup": 1.002,
+      "reliable": true
+    },
+    {
+      "group": "fuzzy",
+      "variant": 2,
+      "datasetSize": 10000,
+      "naiveMicros": 670.819,
+      "optimizedMicros": 885.17,
+      "speedup": 0.758,
+      "reliable": true
+    },
+    {
+      "group": "fuzzy",
+      "variant": 2,
+      "datasetSize": 50000,
+      "naiveMicros": 7227.529,
+      "optimizedMicros": 2575.22,
+      "speedup": 2.807,
+      "reliable": false
+    },
+    {
+      "group": "fuzzy",
+      "variant": 2,
+      "datasetSize": 100000,
+      "naiveMicros": 6403.202,
+      "optimizedMicros": 7097.968,
+      "speedup": 0.902,
+      "reliable": true
+    },
+    {
+      "group": "combined",
+      "variant": 0,
+      "datasetSize": 1000,
+      "naiveMicros": 128.596,
+      "optimizedMicros": 106.292,
+      "speedup": 1.21,
+      "reliable": true
+    },
+    {
+      "group": "combined",
+      "variant": 0,
+      "datasetSize": 10000,
+      "naiveMicros": 1204.761,
+      "optimizedMicros": 1051.35,
+      "speedup": 1.146,
+      "reliable": true
+    },
+    {
+      "group": "combined",
+      "variant": 0,
+      "datasetSize": 50000,
+      "naiveMicros": 5385.78,
+      "optimizedMicros": 2638.398,
+      "speedup": 2.041,
+      "reliable": true
+    },
+    {
+      "group": "combined",
+      "variant": 0,
+      "datasetSize": 100000,
+      "naiveMicros": 10005.252,
+      "optimizedMicros": 6810.373,
+      "speedup": 1.469,
+      "reliable": false
+    },
+    {
+      "group": "combined",
+      "variant": 1,
+      "datasetSize": 1000,
+      "naiveMicros": 55.295,
+      "optimizedMicros": 28.054,
+      "speedup": 1.971,
+      "reliable": false
+    },
+    {
+      "group": "combined",
+      "variant": 1,
+      "datasetSize": 10000,
+      "naiveMicros": 372.95,
+      "optimizedMicros": 171.08,
+      "speedup": 2.18,
+      "reliable": true
+    },
+    {
+      "group": "combined",
+      "variant": 1,
+      "datasetSize": 50000,
+      "naiveMicros": 981.282,
+      "optimizedMicros": 198.928,
+      "speedup": 4.933,
+      "reliable": true
+    },
+    {
+      "group": "combined",
+      "variant": 1,
+      "datasetSize": 100000,
+      "naiveMicros": 1563.095,
+      "optimizedMicros": 7497.431,
+      "speedup": 0.208,
+      "reliable": false
+    }
+  ],
+  "note": "Rows with reliable=false had a JMH confidence interval wider than 25% of the measured value, from machine contention. Render them as indicative only."
+}

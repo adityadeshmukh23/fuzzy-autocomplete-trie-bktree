@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    Spring Boot is the parent purely for dependency management (version alignment).
+    NOTHING from Spring is on the classpath yet: Phase 1 is plain Java + JUnit, so the
+    core algorithms can be compiled and tested in complete isolation from the web layer.
+    The web starter is added in Phase 5.
+  -->
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.3.5</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>com.fuzzysearch</groupId>
+  <artifactId>fuzzy-search-engine</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <name>fuzzy-search-engine</name>
+  <description>Fuzzy autocomplete search engine: hand-built trie, BK-tree and top-K ranking</description>
+
+  <properties>
+    <java.version>21</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <jmh.version>1.37</jmh.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <!--
+      junit-jupiter and assertj are declared explicitly, not just inherited through
+      spring-boot-starter-test, because everything under com.fuzzysearch.core is plain Java and
+      its tests need nothing from Spring. Keeping them visible documents that boundary.
+    -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!--
+      JMH, in test scope so it never ships in the application jar.
+
+      Why a benchmarking framework rather than a timing loop: hand-written Java microbenchmarks
+      are systematically wrong. The JIT needs thousands of iterations before it compiles the hot
+      path, so early samples measure the interpreter; dead-code elimination can delete work whose
+      result is never used; and on-stack replacement makes a long timing loop behave unlike the
+      real call. JMH handles warmup, forking into a fresh JVM per run, and result consumption.
+      Our operations run in microseconds to milliseconds, where these effects are large enough to
+      change conclusions.
+    -->
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-core</artifactId>
+      <version>${jmh.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-generator-annprocess</artifactId>
+      <version>${jmh.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+      </plugin>
+
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+
+      <!-- JMH generates its harness classes with an annotation processor. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.openjdk.jmh</groupId>
+              <artifactId>jmh-generator-annprocess</artifactId>
+              <version>${jmh.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+
+      <!--
+        Benchmarks:  ./mvnw test-compile exec:exec@benchmark
+        Fast check:  ./mvnw test-compile exec:exec@benchmark -Dexec.args=... (see bench.quick)
+
+        exec:exec, not exec:java. exec:java runs in Maven's own JVM, so java.class.path would be
+        Maven's classpath, and JMH forks a fresh JVM per benchmark using exactly that property.
+        The forks would start without the project on their classpath and fail.
+      -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>benchmark</id>
+            <goals><goal>exec</goal></goals>
+            <configuration>
+              <executable>java</executable>
+              <classpathScope>test</classpathScope>
+              <arguments>
+                <argument>-classpath</argument>
+                <classpath/>
+                <argument>com.fuzzysearch.bench.BenchmarkSuite</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

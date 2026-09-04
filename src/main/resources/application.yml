@@ -1,0 +1,22 @@
+server:
+  port: ${PORT:8080}
+  compression:
+    # Result lists are small JSON payloads that compress well, and free-tier hosting is usually
+    # bandwidth-constrained.
+    enabled: true
+    mime-types: application/json
+
+spring:
+  application:
+    name: fuzzy-search-engine
+
+fuzzysearch:
+  dataset:
+    # 0 loads the whole bundled dataset (100,000 terms).
+    max-entries: ${FUZZYSEARCH_MAX_ENTRIES:0}
+  cors:
+    allowed-origins: ${FUZZYSEARCH_CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+logging:
+  level:
+    com.fuzzysearch: INFO

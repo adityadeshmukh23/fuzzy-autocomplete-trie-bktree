@@ -1,0 +1,22 @@
+{
+  "name": "fuzzy-search-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/sync-benchmark-data.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/sync-benchmark-data.mjs",
+    "build": "vite build",
+    "preview": "vite preview",
+    "sync-data": "node scripts/sync-benchmark-data.mjs"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.7"
+  }
+}
