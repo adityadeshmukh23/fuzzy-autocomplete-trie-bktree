@@ -88,8 +88,10 @@ public class SearchController {
             return new CompareResponse(query, limit, 0, 0, 1.0, true, List.of());
         }
 
-        Timed optimizedRun = timed(() -> optimized.search(query, limit));
-        Timed naiveRun = timed(() -> naive.search(query, limit));
+        Comparison run = timedInterleaved(() -> optimized.search(query, limit),
+                () -> naive.search(query, limit));
+        Timed optimizedRun = run.first();
+        Timed naiveRun = run.second();
 
         return new CompareResponse(
                 query,
@@ -114,6 +116,44 @@ public class SearchController {
     }
 
     private record Timed(List<SearchResult> results, double micros) {
+    }
+
+    private record Comparison(Timed first, Timed second) {
+    }
+
+    /**
+     * Times two engines by alternating them, rather than running all repeats of one and then all
+     * repeats of the other.
+     *
+     * <p><b>This is a correctness fix, not a refinement.</b> The deployed free tier throttles CPU
+     * once burst credit is exhausted, so in a back-to-back layout the engine measured *second*
+     * absorbs the penalty. Observed on the live instance: the brute-force scan reported ~9 ms when
+     * requested on its own and ~95 ms when it ran second inside this endpoint — inflating the
+     * headline speedup roughly tenfold, purely as an artifact of measurement order.
+     *
+     * <p>Interleaving exposes both engines to the same throttling pattern, so a slowdown mid-request
+     * hits them roughly equally instead of landing entirely on one. It cannot eliminate the noise
+     * — nothing running inside a shared container can — which is exactly why the README's numbers
+     * come from JMH in a dedicated process and these are labelled indicative.
+     */
+    private static Comparison timedInterleaved(Supplier<List<SearchResult>> first,
+                                               Supplier<List<SearchResult>> second) {
+        List<SearchResult> firstResults = List.of();
+        List<SearchResult> secondResults = List.of();
+        long fastestFirst = Long.MAX_VALUE;
+        long fastestSecond = Long.MAX_VALUE;
+
+        for (int i = 0; i < TIMING_REPEATS; i++) {
+            long start = System.nanoTime();
+            firstResults = first.get();
+            fastestFirst = Math.min(fastestFirst, System.nanoTime() - start);
+
+            start = System.nanoTime();
+            secondResults = second.get();
+            fastestSecond = Math.min(fastestSecond, System.nanoTime() - start);
+        }
+        return new Comparison(new Timed(firstResults, fastestFirst / 1_000.0),
+                new Timed(secondResults, fastestSecond / 1_000.0));
     }
 
     private static Timed timed(Supplier<List<SearchResult>> query) {
