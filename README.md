@@ -8,6 +8,10 @@ scanning the same 100,000 words linearly takes **1.14 ms** — **445× slower**.
 Elasticsearch, no fuzzy-matching library: the point of this project is the machinery underneath
 those tools.
 
+**▶ Live demo: <https://fuzzy-autocomplete.onrender.com>**
+*(free hosting — if it has been idle, the first load waits ~30–60s while the server wakes; the
+page tells you so rather than looking broken)*
+
 ```
 203 tests · Java 21 · Spring Boot 3.3 · React 19 · JMH-measured
 ```
@@ -173,6 +177,31 @@ that, and the second half is the more interesting one: it says exactly where thi
 stops paying, and why. The engineering response was the prefix short-circuit — provably
 lossless, and worth ~200× on the path real users take.
 <!-- BENCHMARK-SECTION-END -->
+
+### The same asymmetry, amplified on production hardware
+
+The numbers above come from a developer machine. The deployed free tier is CPU-throttled — the
+index takes 10.6 s to build there versus 442 ms locally, roughly 24× slower — and that turns out
+to change the *shape* of the result, not just its scale.
+
+Measured live, repeated four times each:
+
+| query | optimized | brute force | |
+|---|---:|---:|---|
+| `sear` — a typical keystroke | **33 µs** | 650 µs | **~20× faster** |
+| `definately` — a complete misspelled word | 21–83 ms | 7–14 ms | **3–10× slower** |
+
+The second row is the same distance-2 weakness the benchmarks show at 0.93×, but far worse — and
+the likely reason is memory locality rather than instruction count. BK-tree traversal is
+pointer-chasing through a tree of hash maps: cache-hostile and branch-unpredictable. The
+brute-force scan is a sequential walk over one array with an O(1) length filter, which is about as
+cache-friendly as code gets. Constrained hardware with less cache punishes the first pattern far
+more than the second, so the gap widens rather than scaling uniformly.
+
+**That is the argument for the prefix short-circuit in one line.** The path real users take —
+partially typed words — never enters the expensive branch, and answers in 33 µs on hardware that
+takes 10 seconds just to build the index.
+
 
 ---
 
