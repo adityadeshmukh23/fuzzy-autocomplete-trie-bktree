@@ -178,6 +178,60 @@ class SearchPolicyTest {
         }
     }
 
+    // -------------------------------------------------------------------------------------
+    // Routing between the two fuzzy implementations
+    // -------------------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("the BK-tree is used at distance 1 and the linear scan from distance 2 up")
+    void routesFuzzyWorkToWhicheverIsFaster() {
+        // Pinning the measured boundary. The BK-tree beats a brute-force scan by 3.5x at edit
+        // distance 1 and loses at 2 (0.93x locally, 3-10x worse on throttled deployment hardware),
+        // because it needs exact distances and so cannot use the banded cutoff the scan enjoys.
+        assertThat(SearchPolicy.shouldUseBkTree(0)).isTrue();
+        assertThat(SearchPolicy.shouldUseBkTree(1)).isTrue();
+        assertThat(SearchPolicy.shouldUseBkTree(2)).isFalse();
+        assertThat(SearchPolicy.shouldUseBkTree(3)).isFalse();
+    }
+
+    @Test
+    @DisplayName("routing changes latency, never results")
+    void routingIsResultPreserving() {
+        // The engine switches implementation mid-query when relaxation escalates from distance 1
+        // to distance 2. If the two disagreed about candidates, that switch would silently change
+        // what a user sees. It cannot: the BK-tree returns exactly what a brute-force scan
+        // returns, which BKTreeTest.pruningIsLossless establishes independently.
+        //
+        // "recieve" is the case that actually crosses the boundary: nothing at distance 1 fills
+        // the page, so relaxation widens to 2 and the scan takes over.
+        NaiveSearchService naive = new NaiveSearchService(CORPUS);
+        OptimizedSearchService optimized = new OptimizedSearchService(CORPUS);
+
+        for (String query : List.of("recieve", "relieve", "receive", "banana")) {
+            for (int limit = 1; limit <= 6; limit++) {
+                assertThat(optimized.search(query, limit))
+                        .as("query '%s', limit %d", query, limit)
+                        .isEqualTo(naive.search(query, limit));
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("the isolated fuzzySearch probe still uses the BK-tree at every distance")
+    void fuzzySearchProbeDoesNotRoute() {
+        // fuzzySearch is what the benchmark uses to measure the BK-tree on its own. If it routed
+        // like search() does, the distance-2 fuzzy benchmark would be measuring the linear scan
+        // against itself and would report a meaningless 1.00x.
+        OptimizedSearchService optimized = new OptimizedSearchService(CORPUS);
+        NaiveSearchService naive = new NaiveSearchService(CORPUS);
+
+        for (int distance = 1; distance <= 3; distance++) {
+            assertThat(optimized.fuzzySearch("recieve", 10, distance))
+                    .as("distance %d", distance)
+                    .isEqualTo(naive.fuzzySearch("recieve", 10, distance));
+        }
+    }
+
     private static List<RawHit> prefixHits(String... words) {
         List<RawHit> hits = new ArrayList<>();
         for (int i = 0; i < words.length; i++) {

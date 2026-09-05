@@ -31,6 +31,7 @@ import java.util.List;
 public final class NaiveSearchService implements SearchService {
 
     private final List<WordEntry> corpus;
+    private final LinearFuzzyScanner scanner;
     private final RelevanceScorer scorer;
     private final long buildTimeMillis;
 
@@ -43,6 +44,7 @@ public final class NaiveSearchService implements SearchService {
         for (WordEntry entry : this.corpus) {
             maxWeight = Math.max(maxWeight, entry.weight());
         }
+        this.scanner = new LinearFuzzyScanner(this.corpus);
         this.scorer = new RelevanceScorer(maxWeight);
         this.buildTimeMillis = (System.nanoTime() - start) / 1_000_000L;
     }
@@ -120,26 +122,8 @@ public final class NaiveSearchService implements SearchService {
         }
 
         return SearchPolicy.progressiveSearch(prefixHits, limit, FuzzyBudget.forQuery(key),
-                budget -> scanForFuzzyHits(key, budget), scorer);
+                budget -> scanner.scan(key, budget), scorer);
     }
 
-    /**
-     * One brute-force pass at a given edit budget, skipping words that are prefix matches --
-     * those are already accounted for, and labelling them FUZZY would contradict the stronger
-     * signal.
-     */
-    private List<RawHit> scanForFuzzyHits(String key, int budget) {
-        final List<RawHit> hits = new ArrayList<>();
-        for (WordEntry entry : corpus) {                       // <-- every word, every query
-            if (entry.normalized().startsWith(key)) {
-                continue;
-            }
-            int distance = LevenshteinDistance.distanceWithCutoff(key, entry.normalized(), budget);
-            if (distance <= budget) {
-                hits.add(new RawHit(entry.word(), entry.normalized(), entry.weight(),
-                        MatchType.FUZZY, distance));
-            }
-        }
-        return hits;
-    }
+
 }

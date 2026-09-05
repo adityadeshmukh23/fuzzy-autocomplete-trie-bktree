@@ -49,7 +49,39 @@ import java.util.function.IntFunction;
  */
 final class SearchPolicy {
 
+    /**
+     * The widest edit distance at which the BK-tree is actually the faster choice.
+     *
+     * <p><b>Set from measurement, not intuition.</b> Benchmarked over 100,000 words, the BK-tree
+     * beats a brute-force scan by 3.5x at edit distance 1 and *loses* at distance 2 (0.93x). On
+     * the CPU-throttled deployment the gap is far worse — a full-word typo measured 21-83 ms
+     * through the tree against 7-14 ms for the linear scan, 3-10x slower.
+     *
+     * <p>The cause is structural rather than tunable. BK-tree pruning needs the <em>exact</em>
+     * distance at every visited node to compute its window of child edges, so it pays a full
+     * O(m·n) dynamic-programming pass per node. The linear scan only needs a yes/no answer, so it
+     * uses a banded cutoff whose length filter rejects most of the corpus in O(1). At distance 1
+     * pruning overcomes that handicap; at distance 2 the tree visits roughly half its nodes and
+     * the per-node cost dominates.
+     *
+     * <p>So the engine routes: tree where the tree wins, scan where the scan wins. Both
+     * implementations return identical candidate sets — {@code BKTreeTest.pruningIsLossless}
+     * proves the tree finds exactly what a brute-force scan finds — so this is purely a
+     * performance decision and cannot change a single result.
+     */
+    static final int BK_TREE_BUDGET_CEILING = 1;
+
     private SearchPolicy() {
+    }
+
+    /**
+     * Which fuzzy implementation to use at a given edit budget.
+     *
+     * <p>A pure function rather than a branch buried in the service, so the routing rule can be
+     * tested directly and stays visible next to the reasoning that produced it.
+     */
+    static boolean shouldUseBkTree(int budget) {
+        return budget <= BK_TREE_BUDGET_CEILING;
     }
 
     /**

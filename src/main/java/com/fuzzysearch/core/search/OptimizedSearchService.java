@@ -34,6 +34,15 @@ public final class OptimizedSearchService implements SearchService {
 
     private final Trie trie = new Trie();
     private final BKTree bkTree = new BKTree();
+
+    /**
+     * The brute-force scan, kept alongside the tree so the engine can route to whichever is
+     * faster at a given edit distance. Costs roughly 4 MB at 100,000 entries: the WordEntry
+     * objects and the backing array, since the strings themselves are shared with the trie.
+     * A cheap price for removing the worst case entirely.
+     */
+    private final LinearFuzzyScanner scanner;
+
     private final RelevanceScorer scorer;
     private final int size;
     private final long buildTimeMillis;
@@ -58,6 +67,7 @@ public final class OptimizedSearchService implements SearchService {
         Collections.shuffle(keys, new Random(SHUFFLE_SEED));
         bkTree.addAll(keys);
 
+        this.scanner = new LinearFuzzyScanner(unique);
         this.scorer = new RelevanceScorer(maxWeight);
         this.size = trie.size();
         this.buildTimeMillis = (System.nanoTime() - start) / 1_000_000L;
@@ -103,8 +113,12 @@ public final class OptimizedSearchService implements SearchService {
     }
 
     /**
-     * Fuzzy search via BK-tree, which visits only the branches the triangle inequality cannot
-     * rule out. The tree returns normalized keys, so each hit is resolved back to its display
+     * Fuzzy search via BK-tree, always — this is the isolated probe the benchmark uses to measure
+     * the data structure on its own, so it deliberately does <b>not</b> route the way
+     * {@link #search} does. Routing here would make the fuzzy benchmark measure the linear scan
+     * at distance 2 and report a meaningless 1.00x.
+     *
+     * <p>Visits only the branches the triangle inequality cannot rule out. The tree returns normalized keys, so each hit is resolved back to its display
      * spelling and weight through {@link Trie#lookup} -- the trie doubles as the word-to-weight
      * map, so there is no third copy of the vocabulary in memory.
      */
@@ -121,7 +135,22 @@ public final class OptimizedSearchService implements SearchService {
         final List<RawHit> prefixHits = toPrefixHits(trie.topKWithPrefix(key, limit));
 
         return SearchPolicy.progressiveSearch(prefixHits, limit, FuzzyBudget.forQuery(key),
-                budget -> bkTreeFuzzyHits(key, budget), scorer);
+                budget -> fuzzyHits(key, budget), scorer);
+    }
+
+    /**
+     * Generates fuzzy candidates with whichever implementation is faster at this edit distance.
+     *
+     * <p>The BK-tree wins at distance 1 and loses at distance 2 — see
+     * {@link SearchPolicy#BK_TREE_BUDGET_CEILING} for the measurements and the structural reason.
+     * Routing between them is safe because they produce identical candidate sets, which
+     * {@code BKTreeTest.pruningIsLossless} establishes independently: the tree finds exactly what
+     * a brute-force scan finds. So this changes latency and nothing else.
+     */
+    private List<RawHit> fuzzyHits(String key, int budget) {
+        return SearchPolicy.shouldUseBkTree(budget)
+                ? bkTreeFuzzyHits(key, budget)
+                : scanner.scan(key, budget);
     }
 
     private List<RawHit> bkTreeFuzzyHits(String key, int budget) {
