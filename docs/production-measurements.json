@@ -1,0 +1,48 @@
+{
+  "generated": "2026-09-05",
+  "instance": "https://fuzzy-autocomplete.onrender.com",
+  "commit": "f3aaa54",
+  "method": "Each engine sampled through its own single-engine endpoint (/api/search and /api/search/naive), never through /api/compare, so no ordering bias between engines is possible. Instance warmed then settled 45s. Latency read from the server-side figure in each response, excluding network. Reported as median and range over n samples rotating through several queries.",
+  "caveat": "These are production figures from a CPU-throttled free tier and are NOT comparable to the JMH numbers in benchmark-data.json, which measure isolated operations in a dedicated forked JVM on developer hardware. /api/search runs the FULL pipeline (prefix + progressive fuzzy relaxation), not isolated prefix search.",
+  "measurements": [
+    {
+      "case": "prefix, 6-char query",
+      "queries": ["search", "system", "servic", "throug"],
+      "optimizedMedianMicros": 28, "optimizedRangeMicros": [23, 10126],
+      "naiveMedianMicros": 803, "naiveRangeMicros": [720, 37498],
+      "speedup": 28.2, "n": 8,
+      "note": "Optimized is bimodal because 3 of these 4 queries fill the page from prefix matches alone and short-circuit; 'throug' does not."
+    },
+    {
+      "case": "keystroke, 4-char query",
+      "queries": ["sear", "comp", "info", "prog"],
+      "optimizedMedianMicros": 39, "optimizedRangeMicros": [21, 57],
+      "naiveMedianMicros": 606, "naiveRangeMicros": [518, 769],
+      "speedup": 15.7, "n": 8,
+      "note": "All four short-circuit. This is the path real keystrokes take."
+    },
+    {
+      "case": "full-word typo (worst case)",
+      "queries": ["definately", "acommodation", "programing", "seperate"],
+      "optimizedMedianMicros": 8871, "optimizedRangeMicros": [3986, 12929],
+      "naiveMedianMicros": 10870, "naiveRangeMicros": [4867, 85356],
+      "speedup": 1.23, "n": 8,
+      "note": "After the per-distance routing fix. Before it, this path cost 21-104 ms."
+    }
+  ],
+  "shortCircuitCliff": {
+    "note": "Per-query breakdown of the 6-char rotation, n=5 each. The cliff sits exactly at the point where prefix matches stop filling the page.",
+    "queries": [
+      {"query": "search", "prefixMatches": 10, "shortCircuits": true,  "medianMicros": 16, "rangeMicros": [11, 20]},
+      {"query": "system", "prefixMatches": 10, "shortCircuits": true,  "medianMicros": 12, "rangeMicros": [9, 13]},
+      {"query": "servic", "prefixMatches": 10, "shortCircuits": true,  "medianMicros": 14, "rangeMicros": [9, 19]},
+      {"query": "throug", "prefixMatches": 6,  "shortCircuits": false, "medianMicros": 10093, "rangeMicros": [9456, 14418]}
+    ]
+  },
+  "compareEndpointResidualNoise": {
+    "note": "After the interleaving fix, /api/compare is improved but NOT clean. The naive engine still spiked in 2 of 8 samples, and it is still the engine measured second within each interleaved pair. Timing inside a CPU-throttled shared container is not reliable; this endpoint is a demo, not a measurement.",
+    "optimizedMedianMicros": 9771, "optimizedRangeMicros": [7616, 16465], "optimizedSpread": 2.2,
+    "naiveMedianMicros": 11016, "naiveRangeMicros": [9186, 95810], "naiveSpread": 10.4,
+    "n": 8
+  }
+}

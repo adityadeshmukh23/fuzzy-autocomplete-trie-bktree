@@ -178,30 +178,40 @@ stops paying, and why. The engineering response was the prefix short-circuit —
 lossless, and worth ~200× on the path real users take.
 <!-- BENCHMARK-SECTION-END -->
 
-### The same asymmetry, amplified on production hardware
+### Measured on the deployed instance
 
-The numbers above come from a developer machine. The deployed free tier is CPU-throttled — the
-index takes 10.6 s to build there versus 442 ms locally, roughly 24× slower — and that turns out
-to change the *shape* of the result, not just its scale.
+The numbers above are JMH, on developer hardware, measuring each operation in isolation. The
+deployed free tier is CPU-throttled — it takes 10.6 s to build the index there versus 442 ms
+locally — and `/api/search` runs the *whole* pipeline rather than an isolated operation, so these
+are a different measurement, not a re-run of the same one.
 
-Measured live, repeated four times each:
+Sampled 2026-09-05 against commit `f3aaa54`. Each engine hit through its own single-engine
+endpoint, n=8 per configuration, rotating queries, reported as median and range. Raw samples in
+[`docs/production-measurements.json`](docs/production-measurements.json).
 
-| query | optimized | brute force | |
-|---|---:|---:|---|
-| `sear` — a typical keystroke | **33 µs** | 650 µs | **~20× faster** |
-| `definately` — a complete misspelled word | 21–83 ms | 7–14 ms | **3–10× slower** |
+| case | optimized | brute force | speedup |
+|---|---:|---:|---:|
+| keystroke, 4-char query | **39 µs** (21–57) | 606 µs (518–769) | **15.7×** |
+| prefix, 6-char query | 28 µs (23–10,126) | 803 µs (720–37,498) | 28.2× |
+| full-word typo, worst case | 8,871 µs (3,986–12,929) | 10,870 µs (4,867–85,356) | 1.23× |
 
-The second row is the same distance-2 weakness the benchmarks show at 0.93×, but far worse — and
-the likely reason is memory locality rather than instruction count. BK-tree traversal is
-pointer-chasing through a tree of hash maps: cache-hostile and branch-unpredictable. The
-brute-force scan is a sequential walk over one array with an O(1) length filter, which is about as
-cache-friendly as code gets. Constrained hardware with less cache punishes the first pattern far
-more than the second, so the gap widens rather than scaling uniformly.
+### The short-circuit cliff, visible in production
 
-**That is the argument for the prefix short-circuit in one line.** The path real users take —
-partially typed words — never enters the expensive branch, and answers in 33 µs on hardware that
-takes 10 seconds just to build the index.
+The 6-char row is bimodal, and breaking it down per query shows exactly why. The cliff sits
+precisely where prefix matches stop filling the page:
 
+| query | prefix matches | short-circuits? | median |
+|---|---:|:---:|---:|
+| `search` | 10 | yes | **16 µs** |
+| `system` | 10 | yes | **12 µs** |
+| `servic` | 10 | yes | **14 µs** |
+| `throug` | 6 | **no** | **10,093 µs** |
+
+**A ~700× difference across a boundary of one matching word.** With ten prefix matches the engine
+provably cannot be beaten by any fuzzy candidate, skips that work entirely, and answers in
+microseconds. With six, it runs the fuzzy path and pays ten milliseconds. This is the single
+clearest argument for the short-circuit, and it is larger in production than the ~200× measured
+locally — throttled hardware punishes the expensive path harder.
 
 ---
 
@@ -525,6 +535,38 @@ guard.
 **`BenchmarkFairnessTest` audits the benchmark itself** — asserting both engines return identical
 results for every benchmarked configuration, that every query does real work at every size, and
 that corpus slices are nested so N is the only variable in the sweep.
+
+### Benchmark methodology — a measurement bug, and what it changed
+
+*Added 2026-09-05.*
+
+The live comparison endpoint ran all repeats of one engine and then all repeats of the other. On a
+CPU-throttled free tier that is not neutral: burst credit runs out partway through the request, so
+whichever engine is measured **second** absorbs the throttling. The layout had quietly made
+"second" a permanent property of one engine.
+
+It surfaced from a control, not from suspicion. While sampling production, the *brute-force*
+timings came back bimodal — about 9 ms or about 95 ms, nothing between — on code that had not
+changed. A control that moves 10× while its source is fixed means the environment moved, not the
+algorithm. Hitting each engine through its own single-engine endpoint confirmed it: measured
+alone, the scan was ~9 ms every time, and the 95 ms readings existed only inside the comparison.
+
+The bias ran in the flattering direction, inflating the demo's headline speedup roughly tenfold on
+a query where the two engines are close to parity. Every production figure quoted here was
+re-measured afterwards through isolated endpoints, n=8, reported as median and range. Two earlier
+claims did not survive that and were corrected rather than kept: a "~20×" keystroke speedup is
+**15.7×**, and a "33 µs" keystroke latency is a **39 µs median over a 21–57 µs range**.
+
+Repeats now alternate between engines. That reduces the bias but demonstrably does not remove it —
+the scan still spiked in 2 of 8 samples afterwards, and it is still the second engine within each
+pair. **Timing inside a shared, throttled container is not reliable, and no amount of
+rearrangement makes it so.** That is precisely why the headline numbers in this README come from
+JMH in a dedicated forked JVM, why the benchmark suite carries a variance guard that flags any
+measurement with a confidence interval wider than 25%, and why the live endpoint is labelled
+indicative rather than presented as a result.
+
+The general lesson is the one worth keeping: **an unchanged control is the cheapest bug detector
+available in any measurement, and a result that flatters you is the one to distrust first.**
 
 ### API and concurrency
 
